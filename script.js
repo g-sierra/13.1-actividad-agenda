@@ -129,7 +129,7 @@ function createContactCard(contact) {
     ["btn", "btn-sm", "btn-danger", "mt-2"],
     "Eliminar",
   );
-  deleteBtn.addEventListener("click", () => removeContact(contacto.id, card));
+  deleteBtn.addEventListener("click", () => removeContact(contact.id, card));
   cardBody.append(deleteBtn);
 
   return card;
