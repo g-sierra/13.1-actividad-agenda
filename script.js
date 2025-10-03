@@ -2,6 +2,7 @@
 const DARK_MODE = "dark-mode";
 const LIGHT_MODE = "light-mode";
 const THEME_KEY = "theme";
+const DATA_KEY = "contactos";
 
 /* DOM */
 const bodyEl = document.body;
@@ -13,16 +14,21 @@ const contactList = document.querySelector("#contactos");
 
 /* estado */
 const state = {
-  contactos: JSON.parse(localStorage.getItem("contactos")) || [],
+  contactos: JSON.parse(localStorage.getItem(DATA_KEY)) || [],
   theme: localStorage.getItem(THEME_KEY) || LIGHT_MODE, // light por defecto
 };
 
-/* funciones de tema */
-function setThemeState(theme) {
-  state.theme = theme;
-  localStorage.setItem(THEME_KEY, theme);
+/* funcion de manejo de estado */
+function setState(newState) {
+  Object.assign(state, newState);
+
+  localStorage.setItem(DATA_KEY, JSON.stringify(state.contactos));
+  localStorage.setItem(THEME_KEY, state.theme);
+
+  renderAll();
 }
 
+/* funciones de tema */
 function applyTheme(theme) {
   const isDark = theme === DARK_MODE;
 
@@ -42,15 +48,10 @@ function applyTheme(theme) {
   formCard.classList.toggle("text-light", isDark);
 }
 
-function setTheme(theme) {
-  setThemeState(theme);
-  applyTheme(theme);
-}
-
 function toggleTheme() {
-  const newTheme = state.theme === LIGHT_MODE ? DARK_MODE : LIGHT_MODE;
-  setTheme(newTheme);
-  renderContacts();
+  setState({
+    theme: state.theme === LIGHT_MODE ? DARK_MODE : LIGHT_MODE,
+  });
 }
 
 /* funciones de guardar datos */
@@ -71,9 +72,11 @@ function saveContact() {
     input.value = "";
   });
 
-  state.contactos.push(contact);
-  localStorage.setItem("contactos", JSON.stringify(state.contactos));
-  renderContacts();
+  if (Object.keys(contact).length > 0) {
+    setState({
+      contactos: [...state.contactos, contact],
+    });
+  }
 }
 
 /* funciones de mostrar datos */
@@ -90,13 +93,11 @@ function renderContacts() {
   const isDark = state.theme === DARK_MODE;
 
   state.contactos.forEach((c) => {
-    const card = document.createElement("li");
-    card.classList.add("card");
+    const card = createElement("li", ["card"]);
     card.classList.toggle("bg-secondary", isDark);
     card.classList.toggle("text-white", isDark);
 
-    const cardBody = document.createElement("div");
-    cardBody.classList.add("card-body");
+    const cardBody = createElement("div", ["card-body"]);
     card.append(cardBody);
 
     Object.entries(c).forEach(([key, value]) => {
@@ -119,18 +120,19 @@ function renderContacts() {
   contactList.append(fragment);
 }
 
+function renderAll() {
+  applyTheme(state.theme);
+  renderContacts();
+}
+
 /* proceso principal */
 function main() {
-  // definir tema inicial
-  setTheme(state.theme);
-
   // render inicial
-  renderContacts();
+  renderAll();
 
   // event listeners
   themeToggleBtn.addEventListener("click", toggleTheme);
-
-  form.addEventListener("click", (e) => {
+  form.addEventListener("submit", (e) => {
     e.preventDefault();
     saveContact();
   });
