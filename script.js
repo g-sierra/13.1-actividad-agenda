@@ -19,13 +19,13 @@ const state = {
 };
 
 /* funcion de manejo de estado */
-function setState(newState) {
+function setState(newState, callback) {
   Object.assign(state, newState);
 
   localStorage.setItem(DATA_KEY, JSON.stringify(state.contactos));
   localStorage.setItem(THEME_KEY, state.theme);
 
-  renderAll();
+  if (callback) callback();
 }
 
 /* funciones de tema */
@@ -49,9 +49,10 @@ function applyTheme(theme) {
 }
 
 function toggleTheme() {
-  setState({
-    theme: state.theme === LIGHT_MODE ? DARK_MODE : LIGHT_MODE,
-  });
+  setState(
+    { theme: state.theme === LIGHT_MODE ? DARK_MODE : LIGHT_MODE },
+    renderAll,
+  );
 }
 
 /* funciones de guardar datos */
@@ -61,8 +62,8 @@ function getFormFields() {
     .map((el) => el.id);
 }
 
-function saveContact() {
-  const contact = {};
+function getContactFromForm() {
+  const contact = { id: Date.now() };
   const fields = getFormFields();
 
   fields.forEach((field) => {
@@ -72,11 +73,23 @@ function saveContact() {
     input.value = "";
   });
 
-  if (Object.keys(contact).length > 0) {
-    setState({
-      contactos: [...state.contactos, contact],
-    });
-  }
+  return contact;
+}
+
+function saveContact() {
+  const contact = getContactFromForm();
+  if (Object.keys(contact).length <= 1) return;
+
+  setState({ contactos: [...state.contactos, contact] });
+
+  const newCard = createContactCard(contact);
+  contactList.append(newCard);
+}
+
+function removeContact(id, cardElement) {
+  const newContacts = state.contactos.filter((c) => c.id !== id);
+  setState({ contactos: newContacts });
+  cardElement.remove();
 }
 
 /* funciones de mostrar datos */
@@ -87,34 +100,47 @@ function createElement(tag, classes = [], text = "") {
   return el;
 }
 
+function createContactCard(contact) {
+  const card = createElement("li", ["card"]);
+  const isDark = state.theme === DARK_MODE;
+  card.classList.toggle("bg-secondary", isDark);
+  card.classList.toggle("text-white", isDark);
+
+  const cardBody = createElement("div", ["card-body"]);
+  card.append(cardBody);
+
+  Object.entries(contact).forEach(([key, value]) => {
+    if (key === "id") return;
+    if (key === "nombre") {
+      const title = createElement("h5", ["card-title", "fw-bold"], value);
+      cardBody.append(title);
+    } else {
+      const p = createElement(
+        "p",
+        ["card-text", "mb-1"],
+        (key === "notas" ? "Notas: " : "") + value,
+      );
+      cardBody.append(p);
+    }
+  });
+
+  const deleteBtn = createElement(
+    "button",
+    ["btn", "btn-sm", "btn-danger", "mt-2"],
+    "Eliminar",
+  );
+  deleteBtn.addEventListener("click", () => removeContact(contacto.id, card));
+  cardBody.append(deleteBtn);
+
+  return card;
+}
+
 function renderContacts() {
   contactList.innerHTML = "";
   const fragment = document.createDocumentFragment();
-  const isDark = state.theme === DARK_MODE;
 
   state.contactos.forEach((c) => {
-    const card = createElement("li", ["card"]);
-    card.classList.toggle("bg-secondary", isDark);
-    card.classList.toggle("text-white", isDark);
-
-    const cardBody = createElement("div", ["card-body"]);
-    card.append(cardBody);
-
-    Object.entries(c).forEach(([key, value]) => {
-      if (key === "nombre") {
-        const title = createElement("h5", ["card-title", "fw-bold"], value);
-        cardBody.append(title);
-      } else {
-        const p = createElement(
-          "p",
-          ["card-text", "mb-1"],
-          (key === "notas" ? "Notas: " : "") + value,
-        );
-        cardBody.append(p);
-      }
-    });
-
-    fragment.append(card);
+    fragment.append(createContactCard(c));
   });
 
   contactList.append(fragment);
